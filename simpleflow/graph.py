@@ -3,6 +3,7 @@
 ''' Computational graph definition.
 '''
 
+
 class Graph(object):
     ''' Graph containing all computing nodes.
     '''
@@ -31,3 +32,6 @@ class Graph(object):
         '''
         return self
 
+
+# Create a default graph.
+DEFAULT_GRAPH = Graph()

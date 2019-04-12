@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 ''' Optimizer classes for parameters optimization.
 '''
-from .operations import Operation, compute_gradients
+from simpleflow import compute_gradients, DEFAULT_GRAPH, Operation
+
 
 class GradientDescentOptimizer(object):
     ''' Optimizer that implements the gradient descent algorithm.
@@ -33,8 +34,8 @@ class GradientDescentOptimizer(object):
                     if var in grad_table:
                         grad = grad_table[var]
 
-                    # Update its output value.
-                    var.output_value -= learning_rate*grad
+                        # Update its output value.
+                        var.output_value -= learning_rate * grad
 
         return MinimizationOperation()
 

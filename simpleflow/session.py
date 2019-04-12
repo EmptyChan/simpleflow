@@ -3,8 +3,10 @@
 ''' Session to execute a computational graph.
 '''
 from functools import reduce
+from simpleflow import DEFAULT_GRAPH
+from simpleflow.variables import Variable, Placeholder
+from simpleflow.operations import Operation
 
-from .operations import Operation, Variable, Placeholder
 
 class Session(object):
     ''' A session to compute a particular graph.
@@ -53,6 +55,7 @@ class Session(object):
                 node.compute_output()
 
         return operation.output_value
+
 
 def _get_prerequisite(operation):
     ''' Perform a post-order traversal to get a list of nodes to be computed in order.
