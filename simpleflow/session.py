@@ -3,9 +3,11 @@
 ''' Session to execute a computational graph.
 '''
 from functools import reduce
-from simpleflow import DEFAULT_GRAPH
+
+from simpleflow.base import DEFAULT_GRAPH
 from simpleflow.variables import Variable, Placeholder
 from simpleflow.operations import Operation
+from simpleflow.optimizations import Optimizer
 
 
 class Session(object):
@@ -54,22 +56,25 @@ class Session(object):
             else:  # Operation and variable
                 node.compute_output()
 
-        return operation.output_value
+        if callable(operation):
+            for ops in operation():
+                if isinstance(ops, Optimizer):
+                    pass
+                else:
+                    print('loss: {}'.format(ops.output_value))
+        else:
+            return operation.output_value
 
 
 def _get_prerequisite(operation):
     ''' Perform a post-order traversal to get a list of nodes to be computed in order.
     '''
-    postorder_nodes = []
-
-    # Collection nodes recursively.
-    def postorder_traverse(operation):
-        if isinstance(operation, Operation):
-            for input_node in operation.input_nodes:
-                postorder_traverse(input_node)
-        postorder_nodes.append(operation)
-
-    postorder_traverse(operation)
-
-    return postorder_nodes
+    if isinstance(operation, Operation):
+        for input_node in operation.input_nodes:
+            yield from _get_prerequisite(input_node)
+    if callable(operation):
+        for ops in operation():
+            yield from _get_prerequisite(ops)
+    else:
+        yield operation
 

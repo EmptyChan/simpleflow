@@ -31,7 +31,3 @@ class Graph(object):
         ''' Set this graph as global default graph.
         '''
         return self
-
-
-# Create a default graph.
-DEFAULT_GRAPH = Graph()

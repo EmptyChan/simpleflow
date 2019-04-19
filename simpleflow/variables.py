@@ -8,8 +8,8 @@
 """
 import numpy as np
 from simpleflow import DEFAULT_GRAPH
-from simpleflow.operations import Add, MatMul, Multiply
-from simpleflow.optimization import Sigmoid, ReduceSum, Negative, Square
+from simpleflow.operations import Add, MatMul, Multiply, Operation, Negative
+
 # ------------------------------------------------------------------------------
 # Constant node
 # ------------------------------------------------------------------------------
