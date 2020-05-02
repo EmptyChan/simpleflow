@@ -39,11 +39,7 @@ b = sf.Variable(0.1, name='threshold')
 # y = x*w + b
 y = sf.matmul(x, w, name="x.dot(w)") + b
 
-loss = sf.reduce_mean(
-    sf.reduce_sum(
-        sf.square(y - y_, name="平方"), axis=1
-    )
-)
+loss = sf.MSELoss(y_, y)()
 
 train_op = sf.GradientDescentOptimizer(learning_rate=0.005).minimize(loss)
 

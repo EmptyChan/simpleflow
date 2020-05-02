@@ -4,24 +4,45 @@
 '''
 import numpy as np
 from simpleflow.base import compute_gradients, DEFAULT_GRAPH
+from functools import partial
 
 
 class Optimizer(object):
+    """
+    优化器
+    """
     def __init__(self):
         self.output_value = None
+        self.loss = None
+        self.grad_table = None
 
     def minimize(self, loss):
-        raise NotImplementedError
+        """
+        最小化损失度
+        :param loss: 损失度
+        :return:
+        """
+        self.loss = loss
+        return [self.loss, self]
 
     def compute_output(self):
-        ''' Compute and return the output value of the operation.
-        '''
+        """
+        计算优化器的输出
+        :return:
+        """
+        self.grad_table = compute_gradients(self.loss)
+        for var in DEFAULT_GRAPH.trainable_variables:
+            self.call(var)
+        return None
+
+    def call(self, var):
         raise NotImplementedError
 
 
 class GradientDescentOptimizer(Optimizer):
-    ''' Optimizer that implements the gradient descent algorithm.
-    '''
+    """
+    梯度下降优化器
+    """
     def __init__(self, learning_rate):
         ''' Construct a new gradient descent optimizer
 
@@ -30,34 +51,15 @@ class GradientDescentOptimizer(Optimizer):
         '''
         super(self.__class__, self).__init__()
         self.learning_rate = learning_rate
-        self.loss = None
 
-    def compute_output(self):
+    def call(self, var):
         ''' Compute and return the output value of the operation.
         '''
         # Get gradient table.
-        grad_table = compute_gradients(self.loss)
-
-        # Iterate all trainable variables in graph.
-        for var in DEFAULT_GRAPH.trainable_variables:
-            if var in grad_table:
-                grad = grad_table[var]
-                # Update its output value.
-                var.output_value -= self.learning_rate * grad
-        return None
-
-    def minimize(self, loss):
-        ''' Generate an gradient descent optimization operation for loss.
-
-        :param loss: The loss operation to be optimized.
-        :type loss: Object of `Operation`
-        '''
-        self.loss = loss
-
-        def call():
-            yield self.loss
-            yield self
-        return call
+        if var in self.grad_table:
+            # Update its output value.
+            var.output_value -= self.learning_rate * self.grad_table[var]
+            del self.grad_table[var]
 
 
 class StochasticGradientDescentOptimizer(Optimizer):
@@ -71,27 +73,13 @@ class StochasticGradientDescentOptimizer(Optimizer):
         '''
         super(self.__class__, self).__init__()
         self.learning_rate = learning_rate
-        self.loss = None
 
-    def compute_output(self):
+    def call(self, var):
         ''' Compute and return the output value of the operation.
         '''
         # 随机梯度下降，TODO
         # Get gradient table.
         raise NotImplementedError
-
-    def minimize(self, loss):
-        ''' Generate an gradient descent optimization operation for loss.
-
-        :param loss: The loss operation to be optimized.
-        :type loss: Object of `Operation`
-        '''
-        self.loss = loss
-
-        def call():
-            yield self.loss
-            yield self
-        return call
 
 
 class MomentumOptimizer(Optimizer):
@@ -107,36 +95,17 @@ class MomentumOptimizer(Optimizer):
         self.learning_rate = learning_rate
         self.momentum = momentum
         self.decay = decay
-        self.loss = None
 
-    def compute_output(self):
+    def call(self, var):
         ''' Compute and return the output value of the operation.
         '''
         # 动量梯度下降
-        # Get gradient table.
-        grad_table = compute_gradients(self.loss)
-
         # Iterate all trainable variables in graph.
-        for var in DEFAULT_GRAPH.trainable_variables:
-            if var in grad_table:
-                grad = grad_table[var]
-                # Update its output value.
-                self.decay = self.momentum * self.decay - self.learning_rate * grad
-                var.output_value += self.decay
-        return None
-
-    def minimize(self, loss):
-        ''' Generate an gradient descent optimization operation for loss.
-
-        :param loss: The loss operation to be optimized.
-        :type loss: Object of `Operation`
-        '''
-        self.loss = loss
-
-        def call():
-            yield self.loss
-            yield self
-        return call
+        if var in self.grad_table:
+            # Update its output value.
+            self.decay = self.momentum * self.decay - self.learning_rate * self.grad_table[var]
+            var.output_value += self.decay
+            del self.grad_table[var]
 
 
 class AdaGradOptimizer(Optimizer):
@@ -151,36 +120,16 @@ class AdaGradOptimizer(Optimizer):
         super(self.__class__, self).__init__()
         self.learning_rate = learning_rate
         self.decay = decay
-        self.loss = None
 
-    def compute_output(self):
+    def call(self, var):
         ''' Compute and return the output value of the operation.
         '''
         # AdaGrad梯度下降
-        # Get gradient table.
-        grad_table = compute_gradients(self.loss)
-
-        # Iterate all trainable variables in graph.
-        for var in DEFAULT_GRAPH.trainable_variables:
-            if var in grad_table:
-                grad = grad_table[var]
-                # Update its output value.
-                self.decay += np.power(grad, 2)
-                var.output_value -= self.learning_rate * grad / (np.power(self.decay, -2) + 1e-8)
-        return None
-
-    def minimize(self, loss):
-        ''' Generate an gradient descent optimization operation for loss.
-
-        :param loss: The loss operation to be optimized.
-        :type loss: Object of `Operation`
-        '''
-        self.loss = loss
-
-        def call():
-            yield self.loss
-            yield self
-        return call
+        if var in self.grad_table:
+            # Update its output value.
+            self.decay += np.power(self.grad_table[var], 2)
+            var.output_value -= self.learning_rate * self.grad_table[var] / (np.power(self.decay, -2) + 1e-8)
+            del self.grad_table[var]
 
 
 class RMSPropOptimizer(Optimizer):
@@ -196,36 +145,16 @@ class RMSPropOptimizer(Optimizer):
         self.learning_rate = learning_rate
         self.decay = decay
         self.beta = beta
-        self.loss = None
 
-    def compute_output(self):
+    def call(self, var):
         ''' Compute and return the output value of the operation.
         '''
         # RMSProp梯度下降
-        # Get gradient table.
-        grad_table = compute_gradients(self.loss)
-
-        # Iterate all trainable variables in graph.
-        for var in DEFAULT_GRAPH.trainable_variables:
-            if var in grad_table:
-                grad = grad_table[var]
-                # Update its output value.
-                self.decay = self.beta * self.decay + (1 - self.beta) * np.power(grad, 2)
-                var.output_value -= self.learning_rate * grad / (np.power(self.decay, -2) + 1e-8)
-        return None
-
-    def minimize(self, loss):
-        ''' Generate an gradient descent optimization operation for loss.
-
-        :param loss: The loss operation to be optimized.
-        :type loss: Object of `Operation`
-        '''
-        self.loss = loss
-
-        def call():
-            yield self.loss
-            yield self
-        return call
+        if var in self.grad_table:
+            # Update its output value.
+            self.decay = self.beta * self.decay + (1 - self.beta) * np.power(self.grad_table[var], 2)
+            var.output_value -= self.learning_rate * self.grad_table[var] / (np.power(self.decay, -2) + 1e-8)
+            del self.grad_table[var]
 
 
 class AdamOptimizer(Optimizer):
@@ -243,34 +172,14 @@ class AdamOptimizer(Optimizer):
         self.momentum = momentum
         self.beta1 = beta1
         self.beta2 = beta2
-        self.loss = None
 
-    def compute_output(self):
+    def call(self, var):
         ''' Compute and return the output value of the operation.
         '''
-        # RMSProp梯度下降
-        # Get gradient table.
-        grad_table = compute_gradients(self.loss)
-
-        # Iterate all trainable variables in graph.
-        for var in DEFAULT_GRAPH.trainable_variables:
-            if var in grad_table:
-                grad = grad_table[var]
-                # Update its output value.
-                self.momentum = self.beta1 * self.momentum + (1 - self.beta1) * grad
-                self.decay = self.beta2 * self.decay + (1 - self.beta2) * np.power(grad, 2)
-                var.output_value -= self.learning_rate * self.momentum / (np.power(self.decay, -2) + 1e-8)
-        return None
-
-    def minimize(self, loss):
-        ''' Generate an gradient descent optimization operation for loss.
-
-        :param loss: The loss operation to be optimized.
-        :type loss: Object of `Operation`
-        '''
-        self.loss = loss
-
-        def call():
-            yield self.loss
-            yield self
-        return call
+        # Adam梯度下降
+        if var in self.grad_table:
+            # Update its output value.
+            self.momentum = self.beta1 * self.momentum + (1 - self.beta1) * self.grad_table[var]
+            self.decay = self.beta2 * self.decay + (1 - self.beta2) * np.power(self.grad_table[var], 2)
+            var.output_value -= self.learning_rate * self.momentum / (np.power(self.decay, -2) + 1e-8)
+            del self.grad_table[var]

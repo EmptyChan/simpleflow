@@ -3,11 +3,11 @@
 ''' Session to execute a computational graph.
 '''
 from functools import reduce
-
 from simpleflow.base import DEFAULT_GRAPH
 from simpleflow.variables import Variable, Placeholder
 from simpleflow.operations import Operation
 from simpleflow.optimizations import Optimizer
+from types import GeneratorType
 
 
 class Session(object):
@@ -38,6 +38,7 @@ class Session(object):
         for node in all_nodes:
             node.output_value = None
 
+    @profile
     def run(self, operation, feed_dict=None):
         ''' Compute the output of an operation.
 
@@ -56,8 +57,8 @@ class Session(object):
             else:  # Operation and variable
                 node.compute_output()
 
-        if callable(operation):
-            for ops in operation():
+        if isinstance(operation, list):
+            for ops in operation:
                 if isinstance(ops, Optimizer):
                     pass
                 else:
@@ -72,8 +73,8 @@ def _get_prerequisite(operation):
     if isinstance(operation, Operation):
         for input_node in operation.input_nodes:
             yield from _get_prerequisite(input_node)
-    if callable(operation):
-        for ops in operation():
+    if isinstance(operation, list):
+        for ops in operation:
             yield from _get_prerequisite(ops)
     else:
         yield operation
